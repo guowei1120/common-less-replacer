@@ -18,8 +18,8 @@
     "contributes": {
         "commands": [
             {
-                "command": "common-less-replacer.helloWorld",
-                "title": "Hello World"
+                "command": "common-less-replacer.ConfigLessPath",
+                "title": "Config Less Path"
             }
         ],
         "configuration": [

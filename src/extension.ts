@@ -2,7 +2,7 @@
  * @Author: guowei26
  * @Date: 2023-04-21 14:53:27
  * @LastEditors: guowei26
- * @LastEditTime: 2023-04-27 16:39:19
+ * @LastEditTime: 2023-05-24 20:04:41
  * @FilePath: /common-less-replacer/src/extension.ts
  */
 import * as vscode from 'vscode';
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
     const fileWather: vscode.FileSystemWatcher[] = [];
 
     // 保存用户输入的less路径
-    const disposable = vscode.commands.registerCommand('common-less-replacer.helloWorld', async () => {
+    const disposable = vscode.commands.registerCommand('common-less-replacer.ConfigLessPath', async () => {
         const value = await vscode.window.showInputBox({
             prompt: '请输入所配置的less路径，多个的话请以逗号隔开',
             value: filePathList?.join(',')
