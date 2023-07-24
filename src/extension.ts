@@ -2,7 +2,7 @@
  * @Author: guowei26
  * @Date: 2023-04-21 14:53:27
  * @LastEditors: guowei26
- * @LastEditTime: 2023-05-24 20:04:41
+ * @LastEditTime: 2023-07-24 16:49:30
  * @FilePath: /common-less-replacer/src/extension.ts
  */
 import * as vscode from 'vscode';
@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as util from 'util';
 import * as less from 'less';
+import * as _ from 'lodash';
 import * as events from 'events';
 import LessVarCompletionProvider from './LessVarCompletionProvider';
 import {LessTypeEnum, LineAstItemIProps, LessAstListIProps} from './type';
@@ -22,6 +23,7 @@ const transferLessAstToLessObj = (rules: any[]) => {
         const value = item.value?.value;
         if (item.type === LessTypeEnum.DECLARATION) {
             if (typeof value === 'string') {
+                console.log(value);
                 lessObj[item.name] = {
                     value: value,
                     type: LessTypeEnum.NUMBER
@@ -45,6 +47,47 @@ const transferLessAstToLessObj = (rules: any[]) => {
     return lessObj;
 };
 
+// AST value => value
+const transferLessVar = (ast: any, common: any) => {
+    for (const node of ast) {
+        if (node.rules && node.rules.length > 0) {
+            transferLessVar(node.rules, common);
+        } else {
+            const currentLessValue = node?.value?.value;
+            if (typeof currentLessValue === 'string') {
+                const varName = common.get(currentLessValue);
+                if (varName) {
+                    console.log('varName::::', varName);
+                    node.value = new less.default.tree.Value([
+                        new less.default.tree.Expression([new less.default.tree.Anonymous(varName)])
+                    ]);
+                }
+            }
+            if (Array.isArray(currentLessValue) && currentLessValue.length === 1) {
+                const color = currentLessValue[0]?.value?.[0]?.value;
+                const varName = common.get(color);
+                if (varName) {
+                    node.value = new less.default.tree.Value([
+                        new less.default.tree.Expression([new less.default.tree.Anonymous(varName)])
+                    ]);
+                }
+            }
+        }
+    }
+};
+
+// lessAST => LessMap
+const getLessVarMap = (lessAst: any) => {
+    const map: Map<string, string> = new Map();
+    lessAst.forEach((varObj: any) => {
+        Reflect.ownKeys(varObj).forEach(varName => {
+            const varValue = varObj[varName as string]?.value;
+            map.set(varValue, varName as string);
+        });
+    });
+    return map;
+};
+
 export function activate(context: vscode.ExtensionContext) {
     const config = vscode.workspace.getConfiguration();
     const filePathList = config.get<string[]>('conf.less.path') || [];
@@ -61,6 +104,45 @@ export function activate(context: vscode.ExtensionContext) {
             const pathList = value.split(',').filter(item => !!item);
             await config.update('conf.less.path', pathList, vscode.ConfigurationTarget.Workspace, true);
         }
+    });
+
+    // 当前页面css变量覆盖
+    const modification = vscode.commands.registerCommand('common-less-replacer.ModifyCommonLess', async () => {
+        const activeTextEditor = vscode.window.activeTextEditor;
+        if (!activeTextEditor) {
+            return;
+        }
+        const document = activeTextEditor.document;
+        const fileName = document.fileName;
+        const cssFileNameExt = ['.less', '.scss'];
+        const isCssFile = cssFileNameExt.some(name => fileName.includes(name));
+        if (!isCssFile) {
+            return;
+        }
+        let text = document.getText();
+        less.default.parse(text, {processImports: false}, async function (error: any, ast: any) {
+            if (error) {
+                return;
+            }
+            const lessMap = getLessVarMap(lessAst);
+            const cloneLessAst = _.cloneDeep(ast);
+            transferLessVar(cloneLessAst.rules, lessMap);
+            console.log('version::::', less.default.version, less.default.ParseTree);
+            less.default.ParseTree(ast, function (error: any, output: any) {
+                console.log(output, error);
+                if (error) {
+                    console.error('Error occurred while converting AST to LESS code:', error);
+                } else {
+                    const lessCode = output.css;
+                }
+            });
+            // activeTextEditor.edit(editBuilder => {
+            //     const firstLine = document.lineAt(0);
+            //     const lastLine = document.lineAt(document.lineCount - 1);
+            //     const textRange = new vscode.Range(firstLine.range.start, lastLine.range.end);
+            //     editBuilder.replace(textRange, modifiedLessCode);
+            // });
+        });
     });
 
     vscode.workspace.onDidChangeTextDocument(event => {
@@ -137,9 +219,11 @@ export function activate(context: vscode.ExtensionContext) {
             }
         });
     });
-    context.subscriptions.push(autoLessProvider, rightLessProvider, disposable);
+    context.subscriptions.push(autoLessProvider, rightLessProvider, disposable, modification);
 }
 
-export function deactivate() {
-    // TODO wather删除
+export function deactivate(context: vscode.ExtensionContext) {
+    // context.subscriptions.forEach(item => {
+    //     item.dispose?.();
+    // });
 }

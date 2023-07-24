@@ -20,6 +20,10 @@
             {
                 "command": "common-less-replacer.ConfigLessPath",
                 "title": "Config Less Path"
+            },
+            {
+                "command": "common-less-replacer.ModifyCommonLess",
+                "title": "Modify Less Var"
             }
         ],
         "configuration": [
@@ -53,6 +57,7 @@
     },
     "devDependencies": {
         "@types/glob": "^8.1.0",
+        "@types/lodash": "^4.14.195",
         "@types/mocha": "^10.0.1",
         "@types/node": "16.x",
         "@types/vscode": "^1.77.0",
@@ -67,5 +72,8 @@
         "typescript": "^4.9.5",
         "webpack": "^5.76.3",
         "webpack-cli": "^5.0.1"
+    },
+    "dependencies": {
+        "lodash": "^4.17.21"
     }
 }

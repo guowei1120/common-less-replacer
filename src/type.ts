@@ -2,7 +2,7 @@
  * @Author: guowei26
  * @Date: 2023-04-24 19:49:05
  * @LastEditors: guowei26
- * @LastEditTime: 2023-04-27 16:17:46
+ * @LastEditTime: 2023-07-21 17:19:56
  * @FilePath: /common-less-replacer/src/type.ts
  * @Description: 类型
  */
