@@ -2,7 +2,7 @@
  * @Author: guowei26
  * @Date: 2023-04-21 14:53:27
  * @LastEditors: guowei26
- * @LastEditTime: 2023-07-24 16:49:30
+ * @LastEditTime: 2023-07-26 15:33:29
  * @FilePath: /common-less-replacer/src/extension.ts
  */
 import * as vscode from 'vscode';
@@ -11,7 +11,10 @@ import * as path from 'path';
 import * as util from 'util';
 import * as less from 'less';
 import * as _ from 'lodash';
-import * as events from 'events';
+import * as postcss from 'postcss';
+import * as syntax from 'postcss-less';
+const customPlugin = require('./myPlugin');
+
 import LessVarCompletionProvider from './LessVarCompletionProvider';
 import {LessTypeEnum, LineAstItemIProps, LessAstListIProps} from './type';
 
@@ -23,7 +26,6 @@ const transferLessAstToLessObj = (rules: any[]) => {
         const value = item.value?.value;
         if (item.type === LessTypeEnum.DECLARATION) {
             if (typeof value === 'string') {
-                console.log(value);
                 lessObj[item.name] = {
                     value: value,
                     type: LessTypeEnum.NUMBER
@@ -57,9 +59,8 @@ const transferLessVar = (ast: any, common: any) => {
             if (typeof currentLessValue === 'string') {
                 const varName = common.get(currentLessValue);
                 if (varName) {
-                    console.log('varName::::', varName);
                     node.value = new less.default.tree.Value([
-                        new less.default.tree.Expression([new less.default.tree.Anonymous(varName)])
+                        new less.default.tree.Expression([new less.default.tree.Anonymous('ce')])
                     ]);
                 }
             }
@@ -68,7 +69,7 @@ const transferLessVar = (ast: any, common: any) => {
                 const varName = common.get(color);
                 if (varName) {
                     node.value = new less.default.tree.Value([
-                        new less.default.tree.Expression([new less.default.tree.Anonymous(varName)])
+                        new less.default.tree.Expression([new less.default.tree.Anonymous('ce')])
                     ]);
                 }
             }
@@ -119,30 +120,20 @@ export function activate(context: vscode.ExtensionContext) {
         if (!isCssFile) {
             return;
         }
-        let text = document.getText();
-        less.default.parse(text, {processImports: false}, async function (error: any, ast: any) {
-            if (error) {
-                return;
-            }
-            const lessMap = getLessVarMap(lessAst);
-            const cloneLessAst = _.cloneDeep(ast);
-            transferLessVar(cloneLessAst.rules, lessMap);
-            console.log('version::::', less.default.version, less.default.ParseTree);
-            less.default.ParseTree(ast, function (error: any, output: any) {
-                console.log(output, error);
-                if (error) {
-                    console.error('Error occurred while converting AST to LESS code:', error);
-                } else {
-                    const lessCode = output.css;
-                }
+        const fileContent = await fs.readFileSync(fileName, 'utf-8');
+        postcss([customPlugin(lessAst)])
+            .process(fileContent, {syntax})
+            .then(result => {
+                const modifiedAST = result.root; // 这里得到修改后的 AST
+                const modifiedCSS = result.css; // 这里得到修改后的 CSS
+                console.log(modifiedCSS);
+                activeTextEditor.edit(editBuilder => {
+                    const firstLine = document.lineAt(0);
+                    const lastLine = document.lineAt(document.lineCount - 1);
+                    const textRange = new vscode.Range(firstLine.range.start, lastLine.range.end);
+                    editBuilder.replace(textRange, modifiedCSS);
+                });
             });
-            // activeTextEditor.edit(editBuilder => {
-            //     const firstLine = document.lineAt(0);
-            //     const lastLine = document.lineAt(document.lineCount - 1);
-            //     const textRange = new vscode.Range(firstLine.range.start, lastLine.range.end);
-            //     editBuilder.replace(textRange, modifiedLessCode);
-            // });
-        });
     });
 
     vscode.workspace.onDidChangeTextDocument(event => {
