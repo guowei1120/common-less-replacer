@@ -2,7 +2,7 @@
  * @Author: guowei26
  * @Date: 2023-04-21 14:53:27
  * @LastEditors: guowei26
- * @LastEditTime: 2023-07-26 15:33:29
+ * @LastEditTime: 2023-07-28 14:36:11
  * @FilePath: /common-less-replacer/src/extension.ts
  */
 import * as vscode from 'vscode';
@@ -49,34 +49,6 @@ const transferLessAstToLessObj = (rules: any[]) => {
     return lessObj;
 };
 
-// AST value => value
-const transferLessVar = (ast: any, common: any) => {
-    for (const node of ast) {
-        if (node.rules && node.rules.length > 0) {
-            transferLessVar(node.rules, common);
-        } else {
-            const currentLessValue = node?.value?.value;
-            if (typeof currentLessValue === 'string') {
-                const varName = common.get(currentLessValue);
-                if (varName) {
-                    node.value = new less.default.tree.Value([
-                        new less.default.tree.Expression([new less.default.tree.Anonymous('ce')])
-                    ]);
-                }
-            }
-            if (Array.isArray(currentLessValue) && currentLessValue.length === 1) {
-                const color = currentLessValue[0]?.value?.[0]?.value;
-                const varName = common.get(color);
-                if (varName) {
-                    node.value = new less.default.tree.Value([
-                        new less.default.tree.Expression([new less.default.tree.Anonymous('ce')])
-                    ]);
-                }
-            }
-        }
-    }
-};
-
 // lessAST => LessMap
 const getLessVarMap = (lessAst: any) => {
     const map: Map<string, string> = new Map();
@@ -120,11 +92,11 @@ export function activate(context: vscode.ExtensionContext) {
         if (!isCssFile) {
             return;
         }
-        const fileContent = await fs.readFileSync(fileName, 'utf-8');
-        postcss([customPlugin(lessAst)])
+        const fileContent = document.getText();
+        const lessMap = getLessVarMap(lessAst);
+        postcss([customPlugin(lessMap)])
             .process(fileContent, {syntax})
             .then(result => {
-                const modifiedAST = result.root; // 这里得到修改后的 AST
                 const modifiedCSS = result.css; // 这里得到修改后的 CSS
                 console.log(modifiedCSS);
                 activeTextEditor.edit(editBuilder => {
